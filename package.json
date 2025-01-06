@@ -1,6 +1,6 @@
 {
     "name": "com.leeboro.leeboro-tools",
-    "version": "0.1.1",
+    "version": "0.2.0",
     "displayName": "Leeboro Tools",
     "description": "Assorted Unity tools created by Leeboro.",
     "unity": "2022.0",
