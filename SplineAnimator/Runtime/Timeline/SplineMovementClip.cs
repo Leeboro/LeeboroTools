@@ -19,16 +19,18 @@ namespace Leeboro.SplineAnimator
     [Serializable]
     public class SplineMovementClipData
     {
-        [Tooltip("If true, we switch the SplineNavigator's index at the start of this clip.")]
+        [Tooltip("If true, we'll call SetSplineIndex(newSplineIndex) at the beginning of this clip.")]
         public bool overrideSplineIndex = false;
         public int newSplineIndex = 0;
 
         [Range(0f, 1f)] public float startProgress = 0f;
         [Range(0f, 1f)] public float endProgress = 1f;
 
-        [Tooltip("A curve that maps normalized time (0..1) to (0..1). " +
-                 "We'll LERP from startProgress..endProgress using the curve's output.")]
+        [Tooltip("Curve from 0->1 on X to 0->1 on Y. This shapes how quickly we move from startProgress to endProgress.")]
         public AnimationCurve progressCurve = AnimationCurve.Linear(0f, 0f, 1f, 1f);
+
+        [Tooltip("If true, we'll set the animator's 'speed' param each frame based on deltaProgress.")]
+        public bool setAnimatorSpeed = true;
     }
 
     public class SplineMovementClip : PlayableAsset, ITimelineClipAsset
@@ -45,9 +47,10 @@ namespace Leeboro.SplineAnimator
 
         public ClipCaps clipCaps
         {
-            get { return ClipCaps.Extrapolation | ClipCaps.ClipIn | ClipCaps.Blending; }
+            get { return ClipCaps.Blending | ClipCaps.Extrapolation | ClipCaps.ClipIn; }
         }
     }
+
 
 
 

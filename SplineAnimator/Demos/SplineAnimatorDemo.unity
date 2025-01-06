@@ -500,11 +500,6 @@ GameObject:
   m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: f0b55c38fe18c284e8637bac96590a61, type: 3}
   m_PrefabInstance: {fileID: 855061075}
   m_PrefabAsset: {fileID: 0}
---- !u!95 &855061078 stripped
-Animator:
-  m_CorrespondingSourceObject: {fileID: 5866666021909216657, guid: f0b55c38fe18c284e8637bac96590a61, type: 3}
-  m_PrefabInstance: {fileID: 855061075}
-  m_PrefabAsset: {fileID: 0}
 --- !u!114 &855061080
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -520,8 +515,7 @@ MonoBehaviour:
   splineContainer: {fileID: 129049996}
   splineIndex: 0
   progress: 1
-  turnSpeed: 60
-  _animator: {fileID: 855061078}
+  turnSpeed: 360
 --- !u!1 &975295024
 GameObject:
   m_ObjectHideFlags: 0

@@ -17,7 +17,12 @@ namespace Leeboro.SplineAnimator
     [TrackClipType(typeof(SplineMovementClip))]
     public class SplineMovementTrack : TrackAsset
     {
-     
+        public override Playable CreateTrackMixer(PlayableGraph graph, GameObject go, int inputCount)
+        {
+            ScriptPlayable<SplineMovementMixer> playable = ScriptPlayable<SplineMovementMixer>.Create(graph, inputCount);
+            return playable;
+        }
     }
+
 
 }

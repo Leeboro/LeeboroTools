@@ -12,17 +12,18 @@ using Unity.Mathematics;
 
 namespace Leeboro.SplineAnimator
 {
+
     [RequireComponent(typeof(Animator))]
     public class SplineNavigator : MonoBehaviour
     {
         [Header("Spline Settings")]
         public SplineContainer splineContainer;
 
-        [Tooltip("Which spline in the container to use (0-based).")]
+        [Tooltip("Default spline index if not overridden by a clip. 0-based.")]
         public int splineIndex = 0;
 
         [Range(0f, 1f)]
-        [Tooltip("Where we are along the spline: 0=start, 1=end.")]
+        [Tooltip("Current normalized position along the Spline (0 = start, 1 = end).")]
         public float progress = 0f;
 
         [Header("Rotation Settings")]
@@ -30,16 +31,17 @@ namespace Leeboro.SplineAnimator
         public float turnSpeed = 360f;
 
         private Spline _spline;
-        private float _splineLengthCached = 0f;
         private Animator _animator;
+        private float _splineLengthCached = 0f;
 
         private void Awake()
         {
             _animator = GetComponent<Animator>();
-            if (splineContainer && splineIndex < splineContainer.Splines.Count)
+
+            if (splineContainer != null && splineIndex < splineContainer.Splines.Count)
             {
                 _spline = splineContainer.Splines[splineIndex];
-                CacheSplineLength();
+                CacheSplineLength(splineIndex);
             }
             else
             {
@@ -48,71 +50,93 @@ namespace Leeboro.SplineAnimator
         }
 
         /// <summary>
-        /// Re-caches the spline length for performance. 
-        /// Useful if you change the spline or transform at runtime, but typically done once in Awake().
+        /// Switch to another spline in the same container (e.g., to hop to a new path).
+        /// Re-caches the length for performance.
         /// </summary>
-        private void CacheSplineLength()
+        public void SetSplineIndex(int newIndex)
         {
+            if (splineContainer == null) return;
+            if (newIndex < 0 || newIndex >= splineContainer.Splines.Count)
+            {
+                Debug.LogWarning($"SplineNavigator: Invalid spline index {newIndex}.");
+                return;
+            }
+
+            splineIndex = newIndex;
+            _spline = splineContainer.Splines[newIndex];
+            CacheSplineLength(newIndex);
+        }
+
+        private void CacheSplineLength(int index)
+        {
+            // Build matrix
             Matrix4x4 unityMatrix = Matrix4x4.TRS(
                 splineContainer.transform.position,
                 splineContainer.transform.rotation,
                 splineContainer.transform.lossyScale
             );
             float4x4 localToWorld = MatrixConversion.ToFloat4x4(unityMatrix);
-            _splineLengthCached = SplineUtility.CalculateLength(_spline, localToWorld);
+
+            // Cache length
+            _splineLengthCached = SplineUtility.CalculateLength(splineContainer.Splines[index], localToWorld);
         }
 
         /// <summary>
-        /// Public method for the Timeline (or other code) to set progress [0..1].
-        /// This physically moves and orients the character on the spline.
+        /// Timeline calls this each frame to set the normalized progress.
+        /// This physically moves/rotates the character along the spline.
         /// </summary>
         public void SetProgress(float newProgress)
         {
             progress = Mathf.Clamp01(newProgress);
-            if (_spline == null) return;
 
-            // Position
+            if (_spline == null)
+                return;
+
+            // Evaluate position & tangent
             Vector3 localPos = SplineUtility.EvaluatePosition(_spline, progress);
-            Vector3 worldPos = splineContainer.transform.TransformPoint(localPos);
+            Vector3 newPos = splineContainer.transform.TransformPoint(localPos);
 
-            // Tangent (for forward direction)
             Vector3 localTan = SplineUtility.EvaluateTangent(_spline, progress);
             Vector3 splineTangent = splineContainer.transform.TransformDirection(localTan).normalized;
 
-            // Rotate
+            // Rotation
             if (splineTangent.sqrMagnitude > 0.0001f)
             {
                 if (Application.isPlaying)
                 {
                     // Smooth turn
                     Quaternion targetRot = Quaternion.LookRotation(splineTangent, Vector3.up);
-                    float dt = Time.deltaTime;
-                    transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRot, turnSpeed * dt);
+                    float deltaTime = Time.deltaTime;
+                    transform.rotation = Quaternion.RotateTowards(
+                        transform.rotation, targetRot, turnSpeed * deltaTime
+                    );
                 }
                 else
                 {
-                    // Snap rotation in Edit Mode if this is called
+                    // If we happen to see a preview in editor, we just snap
                     transform.rotation = Quaternion.LookRotation(splineTangent, Vector3.up);
                 }
             }
 
-            // Finally set position
-            transform.position = worldPos;
+            transform.position = newPos;
         }
 
         /// <summary>
-        /// Optionally switch to another spline in the container if you want to jump around.
+        /// Optionally call this to set the animator's speed param based on how quickly 'progress' changed this frame.
+        /// If you want run/walk transitions in your blend tree, set up that param in your Animator.
         /// </summary>
-        public void SetSplineIndex(int newIndex)
+        public void SetAnimatorSpeedFromDeltaProgress(float deltaProgress, float deltaTime)
         {
-            if (!splineContainer || newIndex < 0 || newIndex >= splineContainer.Splines.Count)
-                return;
+            if (deltaTime <= 0f) return;
 
-            splineIndex = newIndex;
-            _spline = splineContainer.Splines[newIndex];
-            CacheSplineLength();
-            SetProgress(0f);
+            float distanceTraveled = deltaProgress * _splineLengthCached;
+            float speedValue = distanceTraveled / deltaTime;
+
+            // Set the Animator parameter named "speed" (adjust to your naming)
+            _animator.SetFloat("speed", speedValue);
         }
+
+        public Animator GetAnimator() => _animator;
     }
 
     /// <summary>
