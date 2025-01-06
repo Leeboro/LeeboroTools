@@ -7,6 +7,7 @@
 // -----------------------------------------------------------------------
 
 using UnityEngine;
+using UnityEngine.Playables;
 using UnityEngine.Timeline;
 
 namespace Leeboro.SplineAnimator
@@ -16,8 +17,7 @@ namespace Leeboro.SplineAnimator
     [TrackClipType(typeof(SplineMovementClip))]
     public class SplineMovementTrack : TrackAsset
     {
-        // For simple usage, we don't define a custom mixer here.
-        // Each clip will be handled by its own SplineProgressBehaviour in a playable.
+     
     }
 
 }

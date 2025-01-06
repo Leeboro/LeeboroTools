@@ -11,63 +11,47 @@ using UnityEngine.Playables;
 
 namespace Leeboro.SplineAnimator
 {
-    public class SplineMovementBehavior : PlayableBehaviour
+
+    public class SplineMovementBehaviour : PlayableBehaviour
     {
         public SplineMovementClipData clipData;
 
-        private float _prevProgress = 0f;
-        private double _prevTime = 0.0;
+        private bool _splineIndexSet = false;
 
-        // Called once each frame while the Timeline is playing or scrubbing.
         public override void ProcessFrame(Playable playable, FrameData info, object playerData)
         {
             var navigator = playerData as SplineNavigator;
-            if (navigator == null) return;
+            if (navigator == null)
+                return;
 
-            // Current local time within this clip
-            double time = playable.GetTime();
-            double duration = playable.GetDuration();
-
-            // Evaluate progress from the curve
-            float normalizedTime = (duration > 0.0) ? (float)(time / duration) : 0f;
-            float currentProgress = clipData.progressCurve.Evaluate(normalizedTime);
-
-            // Set the navigator's progress. This works in play mode & editor scrubbing.
-            navigator.SetProgress(currentProgress);
-
-            // Optionally set Animator speed
-            if (clipData.setAnimatorSpeed)
+            // 1) If it's near the start of the clip, override the spline index (once).
+            double localTime = playable.GetTime();
+            if (!_splineIndexSet && localTime < 0.01 && clipData.overrideSplineIndex)
             {
-                // We can approximate deltaProgress by (currentProgress - _prevProgress)
-                float deltaProgress = currentProgress - _prevProgress;
-                float deltaTime = (float)(time - _prevTime);
-
-                // In Editor scrubbing backward or jumping, deltaTime might be negative or large.
-                // We'll handle that gracefully:
-                if (deltaTime > 0f && Application.isPlaying)
-                {
-                    // Only set speed if we're in actual Play mode (makes sense for character foot movement).
-                    navigator.SetAnimatorSpeedFromDeltaProgress(deltaProgress, deltaTime);
-                }
-                else
-                {
-                    // We might zero out speed in abrupt scrubs, or just do nothing.
-                    navigator.GetAnimator().SetFloat("speed", 0f);
-                }
+                navigator.SetSplineIndex(clipData.newSplineIndex);
+                _splineIndexSet = true;
             }
 
-            // Store state for next frame
-            _prevProgress = currentProgress;
-            _prevTime = time;
+            // 2) Compute local fraction of the clip
+            double duration = playable.GetDuration();
+            float t = (duration > 0.0001) ? (float)(localTime / duration) : 0f;
+
+            // 3) Evaluate the user-defined curve to shape progress
+            float curveVal = clipData.progressCurve.Evaluate(t);
+
+            // 4) LERP from startProgress..endProgress
+            float finalProgress = Mathf.Lerp(clipData.startProgress, clipData.endProgress, curveVal);
+
+            // 5) Set the navigator's progress each frame
+            navigator.SetProgress(finalProgress);
         }
 
         public override void OnBehaviourPlay(Playable playable, FrameData info)
         {
-            _prevTime = playable.GetTime();
-            _prevProgress = 0f;  // or evaluate at that start time
+            // Reset the bool so we can set the spline index if this clip restarts
+            _splineIndexSet = false;
         }
     }
-
 
 
 }
