@@ -1,0 +1,22 @@
+// -----------------------------------------------------------------------
+// Copyright (c) 2025 Leeboro. All rights reserved.
+// -----------------------------------------------------------------------
+// Author: 
+// Creation Date: 
+// Description: Description of the script
+// -----------------------------------------------------------------------
+
+using UnityEngine;
+
+#ROOTNAMESPACEBEGIN#
+namespace GyotaejeonMR { #change name based on project
+
+    public class #SCRIPTNAME# : MonoBehaviour
+    {
+
+
+
+    }
+
+}
+#ROOTNAMESPACEEND#

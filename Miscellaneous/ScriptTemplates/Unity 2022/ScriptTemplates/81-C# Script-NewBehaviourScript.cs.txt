@@ -1,0 +1,26 @@
+// -----------------------------------------------------------------------
+// Copyright (c) #YEAR# Leeboro. All rights reserved.
+// -----------------------------------------------------------------------
+// Author: #AUTHORNAME#
+// Creation Date: #DATETIME#
+// Description: Description of the script
+// -----------------------------------------------------------------------
+
+using UnityEngine;
+
+namespace Leeboro { #change name based on project
+
+    public class #SCRIPTNAME# : MonoBehaviour
+    {
+        void Start()
+        {
+            #NOTRIM#
+        }
+
+        void Update()
+        {
+            #NOTRIM#
+        }
+    }
+
+}
