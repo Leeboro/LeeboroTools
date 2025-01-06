@@ -1,0 +1,21 @@
+{
+    "name": "com.leeboro.leeboro-tools",
+    "version": "0.1.0",
+    "displayName": "Leeboro Tools",
+    "description": "Assorted Unity tools created by Leeboro.",
+    "unity": "2022.0",
+    "documentationUrl": "https://github.com/Leeboro/LeeboroTools",
+   "dependencies":{
+    "com.unity.splines": "2.6.0",
+    "com.unity.timeline": "1.8.0"
+   },
+    "keywords": [
+      "Tools",
+      "Animation"
+    ],
+    "author": {
+      "name": "Leeboro",
+      "email": "alexander@leeboro.com",
+      "url": "https://www.leeboro.com"
+    }
+  }
