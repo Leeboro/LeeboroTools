@@ -18,35 +18,27 @@ namespace Leeboro.SplineAnimator
     [Serializable]
     public class SplineMovementClipData
     {
-        [Tooltip("Mapping of (0->clip duration) to speed.")]
-        public AnimationCurve speedCurve = AnimationCurve.Linear(0f, 1f, 1f, 1f);
+        [Tooltip("Curve that maps (0 -> Clip Duration) to (0 -> 1) progress along the spline. " +
+                 "You can also exceed 1 or go negative if you want to reverse the path.")]
+        public AnimationCurve progressCurve = AnimationCurve.Linear(0f, 0f, 1f, 1f);
 
-        [Tooltip("Set this true if you want to force speed to 0 at clip end.")]
-        public bool stopAtEnd = false;
+        [Tooltip("If true, we'll also set an 'Animator speed' parameter based on the derivative of this curve.")]
+        public bool setAnimatorSpeed = true;
     }
 
     public class SplineMovementClip : PlayableAsset, ITimelineClipAsset
     {
         public SplineMovementClipData clipData = new SplineMovementClipData();
 
-        // Timeline will call this to create the playable
         public override Playable CreatePlayable(PlayableGraph graph, GameObject owner)
         {
-            ScriptPlayable<SplineMovementBehaviour> playable = ScriptPlayable<SplineMovementBehaviour>.Create(graph);
-
-            // Retrieve the behaviour instance to store the clipData
-            SplineMovementBehaviour behaviour = playable.GetBehaviour();
+            var playable = ScriptPlayable<SplineMovementBehavior>.Create(graph);
+            var behaviour = playable.GetBehaviour();
             behaviour.clipData = clipData;
-
             return playable;
         }
 
-        // Settings that describe the clip's capabilities (e.g., looping, etc.)
-        public ClipCaps clipCaps
-        {
-            get { return ClipCaps.Blending | ClipCaps.Extrapolation | ClipCaps.ClipIn; }
-        }
+        public ClipCaps clipCaps => ClipCaps.Extrapolation | ClipCaps.ClipIn | ClipCaps.Blending;
     }
-
 
 }

@@ -6,10 +6,10 @@
 // Description: Description of the script
 // -----------------------------------------------------------------------
 
+
 using UnityEngine;
 using UnityEngine.Splines;
-using Unity.Mathematics;  // for float4x4
-using System;             // for [Serializable], if needed
+using Unity.Mathematics;
 
 namespace Leeboro.SplineAnimator
 {
@@ -27,7 +27,6 @@ namespace Leeboro.SplineAnimator
         }
     }
 
-
 [RequireComponent(typeof(Animator))]
     public class SplineNavigator : MonoBehaviour
     {
@@ -38,27 +37,25 @@ namespace Leeboro.SplineAnimator
         [Tooltip("If the SplineContainer has multiple Spline objects, specify which one to use. 0-based index.")]
         public int splineIndex = 0;
 
-        [Tooltip("Current normalized position along the Spline (0 = start, 1 = end). Used for in-game movement logic.")]
+        [Tooltip("Current normalized position along the Spline (0 = start, 1 = end). Updated by the Timeline track.")]
         [Range(0f, 1f)]
         public float progress = 0f;
 
         [Header("Motion Settings")]
-        [Tooltip("Movement speed along the spline, in scene units per second.")]
-        public float speed = 0f;
-
-        [Tooltip("Maximum degrees per second to rotate towards the spline's forward direction.")]
+        [Tooltip("Maximum degrees per second to rotate towards the spline's forward direction. Applies each frame (or each Timeline update).")]
         public float turnSpeed = 360f;
 
         private Spline _spline;
-        private Animator _animator;
         private float _splineLengthCached = 0f;
+        [SerializeField] private Animator _animator;
 
         private void Awake()
         {
-            // 1) Get the animator
-            _animator = GetComponent<Animator>();
+            if (_animator == null)
+            {
+                _animator = GetComponent<Animator>();
+            }
 
-            // 2) Retrieve the specific Spline from the container
             if (splineContainer != null && splineIndex < splineContainer.Splines.Count)
             {
                 _spline = splineContainer.Splines[splineIndex];
@@ -69,48 +66,27 @@ namespace Leeboro.SplineAnimator
                 return;
             }
 
-            // 3) Cache the length (assuming the spline doesn't change at runtime).
+            // Cache spline length once
             Matrix4x4 unityMatrix = Matrix4x4.TRS(
                 splineContainer.transform.position,
                 splineContainer.transform.rotation,
                 splineContainer.transform.lossyScale
             );
-
             float4x4 localToWorld = MatrixConversion.ToFloat4x4(unityMatrix);
             _splineLengthCached = SplineUtility.CalculateLength(_spline, localToWorld);
         }
 
-        private void Update()
-        {
-            // Normal game-play update. 
-            // If in a Timeline preview scenario, the Timeline track might also set speed, progress, etc.
-            if (Application.isPlaying)
-            {
-                MoveAlongSpline(Time.deltaTime);
-            }
-        }
-
         /// <summary>
-        /// Moves the character along the spline by speed * deltaTime (if in play mode).
-        /// Also rotates the character to face direction of travel.
+        /// The Timeline track calls SetProgress each frame (or on scrubbing).
+        /// We update position & rotation accordingly.
         /// </summary>
-        private void MoveAlongSpline(float deltaTime)
+        public void SetProgress(float newProgress)
         {
+            progress = Mathf.Clamp01(newProgress);
+
             if (_spline == null)
                 return;
 
-            // Instead of recalculating the length each frame, use the cached value.
-            float splineLength = _splineLengthCached;
-
-            float distanceThisFrame = speed * deltaTime;
-            float normalizedDistance = (splineLength > 0f)
-                ? distanceThisFrame / splineLength
-                : 0f;
-
-            progress += normalizedDistance;
-            progress = Mathf.Clamp01(progress);
-
-            // Evaluate position & tangent at 'progress'
             Vector3 localPos = SplineUtility.EvaluatePosition(_spline, progress);
             Vector3 newPos = splineContainer.transform.TransformPoint(localPos);
 
@@ -118,49 +94,46 @@ namespace Leeboro.SplineAnimator
             Vector3 splineTangent = splineContainer.transform.TransformDirection(localTan).normalized;
 
             // Rotate to face direction of travel
+            // Since we might be scrubbing in Editor (no real deltaTime), we do an "instant" rotation in Edit Mode
+            // or a turnSpeed-based rotation in Play Mode, whichever you prefer.
             if (splineTangent.sqrMagnitude > 0.0001f)
             {
-                Quaternion targetRot = Quaternion.LookRotation(splineTangent, Vector3.up);
-                transform.rotation = Quaternion.RotateTowards(
-                    transform.rotation,
-                    targetRot,
-                    turnSpeed * deltaTime
-                );
+                if (Application.isPlaying)
+                {
+                    // Smooth turn
+                    Quaternion targetRot = Quaternion.LookRotation(splineTangent, Vector3.up);
+                    float deltaTime = Time.deltaTime;
+                    transform.rotation = Quaternion.RotateTowards(
+                        transform.rotation,
+                        targetRot,
+                        turnSpeed * deltaTime
+                    );
+                }
+                else
+                {
+                    // Instant turn in Editor scrubbing to keep it straightforward
+                    transform.rotation = Quaternion.LookRotation(splineTangent, Vector3.up);
+                }
             }
 
-            // Finally set position
             transform.position = newPos;
         }
 
         /// <summary>
-        /// Called by the Timeline each frame to set the speed (e.g., from a Timeline clip).
+        /// If you want an Animator "speed" param, you can compute it from the derivative of progress.
+        /// This is only valid in Play Mode or when the timeline is actively playing forward.
         /// </summary>
-        public void SetSpeed(float newSpeed)
+        public void SetAnimatorSpeedFromDeltaProgress(float deltaProgress, float deltaTime)
         {
-            speed = newSpeed;
+            // Convert deltaProgress -> distance traveled along the path
+            float distance = deltaProgress * _splineLengthCached;
+            float speed = (deltaTime > 0f) ? distance / deltaTime : 0f;
+
+            // Assign to the animator's "speed" parameter
+            _animator.SetFloat("speed", speed);
         }
 
-        /// <summary>
-        /// If the Timeline or code wants to forcibly set progress (rarely needed if you rely on speed).
-        /// </summary>
-        public void SetProgress(float newProgress)
-        {
-            progress = Mathf.Clamp01(newProgress);
-
-            if (_spline != null)
-            {
-                Vector3 localPos = SplineUtility.EvaluatePosition(_spline, progress);
-                transform.position = splineContainer.transform.TransformPoint(localPos);
-            }
-        }
-
-        /// <summary>
-        /// Exposes the Animator so the playable can set float parameters or triggers if needed.
-        /// </summary>
-        public Animator GetAnimator()
-        {
-            return _animator;
-        }
+        public Animator GetAnimator() => _animator;
     }
 
 
