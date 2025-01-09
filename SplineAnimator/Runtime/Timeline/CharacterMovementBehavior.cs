@@ -11,6 +11,7 @@ namespace Leeboro.SplineAnimator {
     using UnityEngine;
     using UnityEngine.Playables;
 
+
     public class CharacterMovementBehaviour : PlayableBehaviour
     {
         [HideInInspector] public float endSplinePosition;
@@ -48,6 +49,8 @@ namespace Leeboro.SplineAnimator {
             clipBlendWeight = (float)info.weight;
         }
     }
+
+
 
 
 }
