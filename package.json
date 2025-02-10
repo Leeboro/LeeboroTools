@@ -1,8 +1,9 @@
 {
   "name": "com.leeboro.leeboro-tools",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "displayName": "Leeboro Tools",
   "description": "Assorted Unity tools created by Leeboro.",
+  "changelogUrl": "CHANGELOG.md",
   "unity": "2022.0",
   "documentationUrl": "https://github.com/Leeboro/LeeboroTools",
   "dependencies": {
